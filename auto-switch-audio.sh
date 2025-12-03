@@ -1,9 +1,10 @@
 #!/bin/bash
 
-# 自动切换 BOYA K5 为默认输入设备
-# 当 K5 RX 连接时，自动将其设置为默认音频输入设备
+# 自动切换优选麦克风为默认输入设备
+# 按优先级顺序检测：K5 RX > DJI MIC MINI
 
-DEVICE_NAME="K5 RX"
+# 按优先级排序的设备列表
+DEVICE_NAMES=("K5 RX" "DJI MIC MINI")
 CHECK_INTERVAL=2
 SWITCH_AUDIO_SOURCE="/opt/homebrew/bin/SwitchAudioSource"
 
@@ -15,16 +16,22 @@ while true; do
     # 获取所有输入设备列表
     DEVICES=$($SWITCH_AUDIO_SOURCE -a -t input 2>/dev/null)
 
-    # 检查 K5 RX 是否在设备列表中
-    if echo "$DEVICES" | grep -q "$DEVICE_NAME"; then
-        # 获取当前输入设备
-        CURRENT=$($SWITCH_AUDIO_SOURCE -t input -c 2>/dev/null)
+    # 获取当前输入设备
+    CURRENT=$($SWITCH_AUDIO_SOURCE -t input -c 2>/dev/null)
 
-        # 如果当前设备不是 K5 RX，则切换
-        if [ "$CURRENT" != "$DEVICE_NAME" ]; then
-            $SWITCH_AUDIO_SOURCE -t input -s "$DEVICE_NAME" 2>/dev/null
-            log "已切换输入设备到: $DEVICE_NAME"
+    # 按优先级查找可用设备
+    TARGET=""
+    for device in "${DEVICE_NAMES[@]}"; do
+        if echo "$DEVICES" | grep -q "$device"; then
+            TARGET="$device"
+            break
         fi
+    done
+
+    # 如果找到目标设备且不是当前设备，则切换
+    if [ -n "$TARGET" ] && [ "$CURRENT" != "$TARGET" ]; then
+        $SWITCH_AUDIO_SOURCE -t input -s "$TARGET" 2>/dev/null
+        log "已切换输入设备到: $TARGET"
     fi
 
     sleep $CHECK_INTERVAL

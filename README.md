@@ -1,6 +1,10 @@
-# BOYA K5 自动切换输入设备
+# 自动切换优选麦克风
 
-当 BOYA K5 麦克风连接到 macOS 时，自动将其设置为默认音频输入设备。
+当优选麦克风连接到 macOS 时，自动将其设置为默认音频输入设备。
+
+支持按优先级检测多个设备：
+1. **K5 RX** (BOYA K5) - 第一优先级
+2. **DJI MIC MINI** - 第二优先级
 
 ## 快速开始
 
@@ -24,8 +28,8 @@
 
 ## 功能特性
 
-- 🎤 自动检测 K5 RX 设备连接
-- 🔄 自动切换为默认输入设备
+- 🎤 自动检测优选麦克风设备连接（K5 RX、DJI MIC MINI）
+- 🔄 按优先级自动切换为默认输入设备
 - 🚀 开机自动启动
 - ⚡ 每 2 秒检查一次设备状态
 - 📝 支持日志记录
@@ -34,8 +38,9 @@
 
 1. LaunchAgent 在系统启动时自动运行监听脚本
 2. 脚本每 2 秒检查一次音频输入设备列表
-3. 如果检测到 "K5 RX" 设备且不是当前默认输入设备，则自动切换
-4. 所有操作都会记录到 `/tmp/auto-switch-audio.log`
+3. 按优先级顺序检测设备：K5 RX > DJI MIC MINI
+4. 如果检测到优选设备且不是当前默认输入设备，则自动切换
+5. 所有操作都会记录到 `/tmp/auto-switch-audio.log`
 
 ## 系统要求
 
@@ -118,15 +123,18 @@ launchctl list | grep auto-switch-audio
 ./install.sh
 ```
 
-### 设备名称不匹配
-如果你的设备显示名称不是 "K5 RX"：
+### 设备名称不匹配或添加新设备
+如果你的设备显示名称不同，或想添加其他设备：
 
 1. 查看实际设备名：
    ```bash
    SwitchAudioSource -a -t input
    ```
 
-2. 编辑 `auto-switch-audio.sh`，修改 `DEVICE_NAME` 变量
+2. 编辑 `auto-switch-audio.sh`，修改 `DEVICE_NAMES` 数组（按优先级排序）：
+   ```bash
+   DEVICE_NAMES=("K5 RX" "DJI MIC MINI" "其他设备名")
+   ```
 
 3. 重新加载服务：
    ```bash
@@ -142,7 +150,7 @@ cat /tmp/auto-switch-audio.err
 ## 注意事项
 
 - 此功能会在系统启动时自动运行
-- K5 RX 连接后会始终保持为默认输入设备
+- 优选麦克风连接后会始终保持为默认输入设备（K5 RX 优先于 DJI MIC MINI）
 - 如果需要临时使用其他麦克风，需要先停止服务
 - 项目目录可以放在任意位置，脚本会自动检测
 

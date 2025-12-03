@@ -14,8 +14,8 @@ NC='\033[0m' # No Color
 # 获取脚本所在目录的绝对路径
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# 配置变量
-DEVICE_NAME="K5 RX"
+# 配置变量 - 按优先级排序
+DEVICE_NAMES=("K5 RX" "DJI MIC MINI")
 LAUNCHAGENT_LABEL="com.user.auto-switch-audio"
 LAUNCHAGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCHAGENT_LABEL}.plist"
 AUTO_SWITCH_SCRIPT="$SCRIPT_DIR/auto-switch-audio.sh"
@@ -47,8 +47,18 @@ fi
 
 # 检查设备是否存在
 echo -e "${YELLOW}[2/5] 检查音频设备...${NC}"
-if ! $SWITCH_AUDIO_SOURCE -a -t input | grep -q "$DEVICE_NAME"; then
-    echo -e "${YELLOW}警告: 未检测到 '$DEVICE_NAME' 设备${NC}"
+FOUND_DEVICE=false
+for device in "${DEVICE_NAMES[@]}"; do
+    if $SWITCH_AUDIO_SOURCE -a -t input | grep -q "$device"; then
+        echo -e "${GREEN}✓ 检测到 '$device' 设备${NC}"
+        FOUND_DEVICE=true
+    else
+        echo -e "${YELLOW}  未检测到 '$device' 设备${NC}"
+    fi
+done
+
+if [ "$FOUND_DEVICE" = false ]; then
+    echo -e "${YELLOW}警告: 未检测到任何目标设备${NC}"
     echo "当前可用的输入设备:"
     $SWITCH_AUDIO_SOURCE -a -t input | sed 's/^/  - /'
     echo ""
@@ -57,8 +67,6 @@ if ! $SWITCH_AUDIO_SOURCE -a -t input | grep -q "$DEVICE_NAME"; then
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         exit 1
     fi
-else
-    echo -e "${GREEN}✓ 检测到 '$DEVICE_NAME' 设备${NC}"
 fi
 
 # 创建自动切换脚本
@@ -66,10 +74,11 @@ echo -e "${YELLOW}[3/5] 创建自动切换脚本...${NC}"
 cat > "$AUTO_SWITCH_SCRIPT" << 'EOF'
 #!/bin/bash
 
-# 自动切换 BOYA K5 为默认输入设备
-# 当 K5 RX 连接时，自动将其设置为默认音频输入设备
+# 自动切换优选麦克风为默认输入设备
+# 按优先级顺序检测：K5 RX > DJI MIC MINI
 
-DEVICE_NAME="K5 RX"
+# 按优先级排序的设备列表
+DEVICE_NAMES=("K5 RX" "DJI MIC MINI")
 CHECK_INTERVAL=2
 SWITCH_AUDIO_SOURCE="/opt/homebrew/bin/SwitchAudioSource"
 
@@ -81,16 +90,22 @@ while true; do
     # 获取所有输入设备列表
     DEVICES=$($SWITCH_AUDIO_SOURCE -a -t input 2>/dev/null)
 
-    # 检查 K5 RX 是否在设备列表中
-    if echo "$DEVICES" | grep -q "$DEVICE_NAME"; then
-        # 获取当前输入设备
-        CURRENT=$($SWITCH_AUDIO_SOURCE -t input -c 2>/dev/null)
+    # 获取当前输入设备
+    CURRENT=$($SWITCH_AUDIO_SOURCE -t input -c 2>/dev/null)
 
-        # 如果当前设备不是 K5 RX，则切换
-        if [ "$CURRENT" != "$DEVICE_NAME" ]; then
-            $SWITCH_AUDIO_SOURCE -t input -s "$DEVICE_NAME" 2>/dev/null
-            log "已切换输入设备到: $DEVICE_NAME"
+    # 按优先级查找可用设备
+    TARGET=""
+    for device in "${DEVICE_NAMES[@]}"; do
+        if echo "$DEVICES" | grep -q "$device"; then
+            TARGET="$device"
+            break
         fi
+    done
+
+    # 如果找到目标设备且不是当前设备，则切换
+    if [ -n "$TARGET" ] && [ "$CURRENT" != "$TARGET" ]; then
+        $SWITCH_AUDIO_SOURCE -t input -s "$TARGET" 2>/dev/null
+        log "已切换输入设备到: $TARGET"
     fi
 
     sleep $CHECK_INTERVAL

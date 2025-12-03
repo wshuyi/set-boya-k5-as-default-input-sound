@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A macOS utility that automatically sets the BOYA K5 microphone as the default audio input device when connected. Uses a LaunchAgent to run a background service that polls for device changes every 2 seconds.
+A macOS utility that automatically sets preferred microphones as the default audio input device when connected. Supports multiple devices with priority order: K5 RX > DJI MIC MINI. Uses a LaunchAgent to run a background service that polls for device changes every 2 seconds.
 
 ## Commands
 
@@ -43,12 +43,16 @@ tail -f /tmp/auto-switch-audio.err  # Error log
 
 - `auto-switch-audio.sh` - Background daemon that runs an infinite loop:
   - Polls device list every 2 seconds using SwitchAudioSource
-  - Switches to "K5 RX" if connected and not already the default
+  - Switches to highest priority available device (K5 RX > DJI MIC MINI)
 
 - `uninstall.sh` - Removes LaunchAgent plist and cleans up logs
 
 ## Key Configuration
 
-Device name is hardcoded as `"K5 RX"` in both `install.sh` (line 18) and the generated `auto-switch-audio.sh` (line 6). Modify `DEVICE_NAME` variable to support different devices.
+Device priority list is defined in `DEVICE_NAMES` array in both `install.sh` (line 18) and `auto-switch-audio.sh` (line 7):
+```bash
+DEVICE_NAMES=("K5 RX" "DJI MIC MINI")
+```
+First matching device in the array is selected. Add/remove/reorder devices as needed.
 
 SwitchAudioSource path is hardcoded to `/opt/homebrew/bin/SwitchAudioSource` (Apple Silicon path).
