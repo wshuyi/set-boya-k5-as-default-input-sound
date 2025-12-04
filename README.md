@@ -46,7 +46,7 @@
 
 - macOS（已在 macOS Sequoia 15.1 测试）
 - Homebrew
-- BOYA K5 麦克风
+- 支持的麦克风：BOYA K5 或 DJI MIC MINI
 
 ## 在其他 macOS 设备上安装
 
@@ -101,13 +101,13 @@ SwitchAudioSource -t input -c
 安装后可以通过以下命令测试：
 
 ```bash
-# 查看当前输入设备（应该是 K5 RX）
+# 查看当前输入设备（应该是优选麦克风之一）
 SwitchAudioSource -t input -c
 
 # 手动切换到其他设备
 SwitchAudioSource -t input -s "MacBook Pro Microphone"
 
-# 等待 2-5 秒后再次查看（应该自动切换回 K5 RX）
+# 等待 2-5 秒后再次查看（应该自动切换回优选麦克风）
 sleep 5 && SwitchAudioSource -t input -c
 ```
 

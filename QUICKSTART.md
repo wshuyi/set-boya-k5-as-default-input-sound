@@ -9,13 +9,13 @@ cd /path/to/set-boya-k5-as-default-input-sound
 
 ## 验证功能
 
-安装完成后，尝试切换到其他麦克风，2-3 秒后会自动切换回 K5 RX：
+安装完成后，尝试切换到其他麦克风，2-3 秒后会自动切换回优选麦克风（K5 RX > DJI MIC MINI）：
 
 ```bash
 # 切换到 MacBook 内置麦克风
 SwitchAudioSource -t input -s "MacBook Pro Microphone"
 
-# 等待 3 秒，自动切回 K5 RX
+# 等待 3 秒，自动切回优选麦克风
 sleep 3 && SwitchAudioSource -t input -c
 ```
 
