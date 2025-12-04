@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A macOS utility that automatically sets preferred microphones as the default audio input device when connected. Supports multiple devices with priority order: K5 RX > DJI MIC MINI. Uses a LaunchAgent to run a background service that polls for device changes every 2 seconds.
+A macOS utility that automatically sets preferred microphones as the default audio input device when connected. Supports multiple devices with priority order: K5 RX > DJI MIC MINI > MacBook Pro Microphone (lid open only). Uses a LaunchAgent to run a background service that polls for device changes every 2 seconds.
 
 ## Commands
 
@@ -44,6 +44,8 @@ tail -f /tmp/auto-switch-audio.err  # Error log
 - `auto-switch-audio.sh` - Background daemon that runs an infinite loop:
   - Polls device list every 2 seconds using SwitchAudioSource
   - Switches to highest priority available device (K5 RX > DJI MIC MINI)
+  - Falls back to MacBook Pro Microphone when lid is open and no external mics connected
+  - Uses `ioreg` to detect clamshell (closed lid) state
 
 - `uninstall.sh` - Removes LaunchAgent plist and cleans up logs
 
