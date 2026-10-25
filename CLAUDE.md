@@ -1,60 +1,15 @@
-# CLAUDE.md
+# Project guidance
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This macOS utility monitors K5 RX input audio and selects the default input using CoreAudio. Read README.md before changing behavior. Exact-zero audio readiness is **not** transmitter power status. Hardware mute and transmitter-off are indistinguishable on the tested unit; the configured policy treats both as unavailable and triggers fallback.
 
-## Project Overview
+- `auto-switch-audio.swift`: only daemon implementation; includes pure `--self-test`, read-only `--probe`, and `--status`.
+- `auto-switch-audio.sh`: installed entry wrapper; builds the installed Swift source into a per-machine cache when needed. Never regenerate the former name-only polling loop.
+- `install.sh`: compile/test first, save rollback, install source and wrapper, then load `com.user.auto-switch-audio`.
+- `uninstall.sh`: stop service/remove installed entry and source; retain logs and rollback history.
+- The tracked `auto-switch-audio-daemon` is an old binary, not an installation input. Do not edit or distribute it.
 
-A macOS utility that automatically sets preferred microphones as the default audio input device when connected. Supports multiple devices with priority order: K5 RX > DJI MIC MINI > MacBook Pro Microphone (lid open only). Uses a LaunchAgent to run a background service that polls for device changes every 2 seconds.
+Runtime: `~/.local/bin/auto-switch-audio`, `~/.local/share/auto-switch-audio/auto-switch-audio.swift`; binary cache under `~/Library/Caches/auto-switch-audio`. Follow global chezmoi rules for deployment and multi-machine sync. Do not include unrelated WIP.
 
-## Commands
+Validate meaningful state timing and error/retry behavior. Real microphone permission and actual default-input readback must be checked after deployment. Do not save audio. Preserve exact-zero semantics; ordinary low volume must not count as disconnection. On invalid/missing data, use unknown rather than silence.
 
-### Installation & Management
-```bash
-./install.sh      # Install and start the service
-./uninstall.sh    # Stop and remove the service
-```
-
-### Service Control
-```bash
-launchctl list | grep auto-switch-audio                              # Check status
-launchctl unload ~/Library/LaunchAgents/com.user.auto-switch-audio.plist  # Stop
-launchctl load ~/Library/LaunchAgents/com.user.auto-switch-audio.plist    # Start
-```
-
-### Audio Device Inspection
-```bash
-SwitchAudioSource -a -t input    # List all input devices
-SwitchAudioSource -t input -c    # Show current input device
-```
-
-### Logs
-```bash
-tail -f /tmp/auto-switch-audio.log  # Output log
-tail -f /tmp/auto-switch-audio.err  # Error log
-```
-
-## Architecture
-
-- `install.sh` - Installation script that:
-  1. Checks/installs SwitchAudioSource via Homebrew
-  2. Generates `auto-switch-audio.sh` with embedded device polling logic
-  3. Creates LaunchAgent plist at `~/Library/LaunchAgents/`
-  4. Loads and starts the service
-
-- `auto-switch-audio.sh` - Background daemon that runs an infinite loop:
-  - Polls device list every 2 seconds using SwitchAudioSource
-  - Switches to highest priority available device (K5 RX > DJI MIC MINI)
-  - Falls back to MacBook Pro Microphone when lid is open and no external mics connected
-  - Uses `ioreg` to detect clamshell (closed lid) state
-
-- `uninstall.sh` - Removes LaunchAgent plist and cleans up logs
-
-## Key Configuration
-
-Device priority list is defined in `DEVICE_NAMES` array in both `install.sh` (line 18) and `auto-switch-audio.sh` (line 7):
-```bash
-DEVICE_NAMES=("K5 RX" "DJI MIC MINI")
-```
-First matching device in the array is selected. Add/remove/reorder devices as needed.
-
-SwitchAudioSource path is hardcoded to `/opt/homebrew/bin/SwitchAudioSource` (Apple Silicon path).
+Selection priority: ready BOYA > connected DJI > UID-confirmed Mac internal microphone (lid open only) > generic Bluetooth/BLE input > other recognized physical inputs/wired headset > Continuity Capture. Never use an AirPods-name whitelist. Built-in transport does not prove a laptop microphone; use UID and allow known wired-headset UIDs with the lid closed. Within the same rank retain the current input, then use stable UID ordering. Exclude virtual/aggregate/unknown inputs and unready BOYA from generic fallback.

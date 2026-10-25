@@ -1,34 +1,13 @@
-# 快速开始
+# 快速使用
 
-## 一键安装
+1. 运行 `./install.sh`。安装器会先编译验证，再切换后台服务。
+2. 执行 `~/.local/bin/auto-switch-audio --status`，确认状态更新时间和 `samplesInWindow`。若提示没有采样，先检查 macOS 麦克风权限。
+3. BOYA 连续约 8 秒输出精确全零时，按 DJI、开盖 Mac 内置麦克风、其他可用实体输入的顺序回退；BOYA 恢复信号约 1 秒后切回。
 
-```bash
-cd /path/to/set-boya-k5-as-default-input-sound
-./install.sh
-```
+**BOYA 硬件静音也会回退到其他输入。** 需要通话/录制静音时，在对应应用中静音。检测依据是音频就绪，不是电源状态。启动时先用备用设备，再判断 BOYA 是否就绪。
 
-## 验证功能
+只读观察：`~/.local/bin/auto-switch-audio --probe 15`。自测：`~/.local/bin/auto-switch-audio --self-test`。日志：`~/Library/Logs/auto-switch-audio/`。卸载：`./uninstall.sh`。
 
-安装完成后，尝试切换到其他麦克风，2-3 秒后会自动切换回优选麦克风（K5 RX > DJI MIC MINI）：
+本工具只切系统默认输入，不切输出；应用若固定选择某个麦克风，需要改成使用系统默认输入。
 
-```bash
-# 切换到 MacBook 内置麦克风
-SwitchAudioSource -t input -s "MacBook Pro Microphone"
-
-# 等待 3 秒，自动切回优选麦克风
-sleep 3 && SwitchAudioSource -t input -c
-```
-
-## 卸载
-
-```bash
-./uninstall.sh
-```
-
-## 在其他 Mac 上使用
-
-1. 将整个项目文件夹复制到新 Mac
-2. 进入项目目录
-3. 运行 `./install.sh`
-
-就这么简单！
+其他输入不限定品牌：蓝牙/BLE优先，其次USB等实体输入及有线耳麦，连续互联iPhone最后。同档优先保持当前设备；虚拟、聚合及无法确认的输入不自动接管。合盖限制只针对UID确认的Mac内置麦克风，不针对有线耳麦。
