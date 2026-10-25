@@ -2,7 +2,7 @@ import Foundation
 import CoreAudio
 import IOKit
 
-let version = "2026.10.25.2"
+let version = "2026.10.25.3"
 func log(_ s: String) { print("\(ISO8601DateFormatter().string(from: Date())) \(s)"); fflush(stdout) }
 
 struct Readiness {
@@ -19,7 +19,7 @@ struct Readiness {
             if signalSeconds >= 1 { state = .ready }
         } else {
             signalSeconds = 0; zeroSeconds += elapsed
-            if zeroSeconds >= 8 { state = .zeroStream }
+            if zeroSeconds >= 2 { state = .zeroStream }
         }
     }
 }
@@ -28,10 +28,10 @@ func selfTest() {
     var s = Readiness()
     for _ in 0..<2 { s.update(samples: 24000, nonzero: 1, elapsed: 0.5) }
     precondition(s.state == .ready, "Even one tiny nonzero sample counts as signal")
-    for _ in 0..<15 { s.update(samples: 24000, nonzero: 0, elapsed: 0.5) }
+    for _ in 0..<3 { s.update(samples: 24000, nonzero: 0, elapsed: 0.5) }
     precondition(s.state == .ready, "Short zero gaps must not switch")
     s.update(samples: 24000, nonzero: 0, elapsed: 0.5)
-    precondition(s.state == .zeroStream, "Eight seconds of exact zeros must fall back")
+    precondition(s.state == .zeroStream, "Two seconds of exact zeros must fall back")
     s.update(samples: 24000, nonzero: 1, elapsed: 0.5)
     precondition(s.state == .zeroStream, "One recovery window is insufficient")
     s.update(samples: 24000, nonzero: 1, elapsed: 0.5)
@@ -40,7 +40,7 @@ func selfTest() {
     precondition(s.state == .unknown && s.zeroSeconds == 0, "Missing samples are not silence")
     s.update(samples: 24000, nonzero: 0, elapsed: 10)
     precondition(s.state == .unknown && s.zeroSeconds == 0, "Sleep/gaps must reset evidence")
-    for _ in 0..<16 { s.update(samples: 24000, nonzero: 0, elapsed: 0.5) }
+    for _ in 0..<4 { s.update(samples: 24000, nonzero: 0, elapsed: 0.5) }
     precondition(s.state == .zeroStream)
     let boya = Device(id: 1, name: "K5 RX", uid: "usb-boya", transport: kAudioDeviceTransportTypeUSB)
     let bt = Device(id: 2, name: "Any Brand Headset", uid: "bt-a", transport: kAudioDeviceTransportTypeBluetooth)
@@ -185,7 +185,7 @@ final class Monitor {
 let args = Array(CommandLine.arguments.dropFirst())
 let statusURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/auto-switch-audio/status.json")
 if args.contains("--help") {
-    print("auto-switch-audio \(version)\n--self-test  Run pure state/selection tests.\n--probe [seconds]  Observe BOYA and proposed target without changing default input or daemon status.\n--status  Read the running daemon's last status (includes timestamp).\n--version  Print version.\nDefault: monitor BOYA exact-zero signal and select input. Hardware mute ALSO triggers fallback after 8 seconds; this does not detect transmitter power. No audio is saved.")
+    print("auto-switch-audio \(version)\n--self-test  Run pure state/selection tests.\n--probe [seconds]  Observe BOYA and proposed target without changing default input or daemon status.\n--status  Read the running daemon's last status (includes timestamp).\n--version  Print version.\nDefault: monitor BOYA exact-zero signal and select input. Hardware mute ALSO triggers fallback after 2 seconds; this does not detect transmitter power. No audio is saved.")
     exit(0)
 }
 if args.contains("--version") { print(version); exit(0) }
@@ -207,7 +207,7 @@ let started = lastTick
 var refreshRequested = true
 var listProperty = address(kAudioHardwarePropertyDevices)
 AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &listProperty, DispatchQueue.main) { _, _ in refreshRequested = true }
-log("start version=\(version) mode=\(dryRun ? "probe" : "daemon") policy=exact-zero-8s/recovery-1s hardware-mute-also-falls-back no-recording")
+log("start version=\(version) mode=\(dryRun ? "probe" : "daemon") policy=exact-zero-2s/recovery-1s hardware-mute-also-falls-back no-recording")
 let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
 timer.schedule(deadline: .now() + 0.5, repeating: 0.5)
 timer.setEventHandler {
@@ -257,7 +257,7 @@ timer.setEventHandler {
             "zeroSeconds": readiness.zeroSeconds, "signalSeconds": readiness.signalSeconds,
             "samplesInWindow": samples, "nonzeroInWindow": nonzero, "monitorDeviceID": monitor?.device ?? 0,
             "error": lastError, "target": target?.name ?? "none", "defaultInput": nameProperty(uintProperty(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyDefaultInputDevice) ?? 0),
-            "policy": "8s exact-zero fallback; hardware mute also falls back; 1s signal recovery; not power detection"]
+            "policy": "2s exact-zero fallback; hardware mute also falls back; 1s signal recovery; not power detection"]
         if let data = try? JSONSerialization.data(withJSONObject: status, options: [.prettyPrinted, .sortedKeys]), !dryRun {
             try? FileManager.default.createDirectory(at: statusURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             try? data.write(to: statusURL, options: .atomic)
